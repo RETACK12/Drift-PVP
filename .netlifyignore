@@ -1,0 +1,8 @@
+.env
+node_modules
+.git
+*.zip
+.chrome-tmp*
+.tmp-node
+.netlify
+data/db.json.tmp

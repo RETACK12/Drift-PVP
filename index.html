@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="UTF-8">
+  <script>document.documentElement.classList.remove("no-js");</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drift PVP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Orbitron:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07010f;
+      --fg: #eef9ff;
+      --muted: rgba(180, 230, 255, 0.72);
+      --cyan: #0ebaff;
+      --cyan-bright: #72f0ff;
+      --blue: #3284ff;
+      --violet: #554fff;
+      --purple: #771bff;
+      --deep: #300059;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100dvh;
+      overflow-x: hidden;
+      color: var(--fg);
+      background: var(--bg);
+      font-family: Manrope, system-ui, sans-serif;
+    }
+
+    .atmosphere,
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .atmosphere {
+      z-index: 0;
+      background:
+        radial-gradient(70% 50% at 50% 18%, rgba(14, 186, 255, 0.16), transparent 58%),
+        radial-gradient(55% 45% at 78% 72%, rgba(119, 27, 255, 0.2), transparent 62%),
+        radial-gradient(50% 40% at 18% 86%, rgba(48, 0, 89, 0.55), transparent 70%),
+        linear-gradient(180deg, #0a0418 0%, var(--bg) 42%, #12061f 100%);
+      overflow: hidden;
+    }
+
+    .streaks {
+      position: absolute;
+      inset: -30%;
+      transform: rotate(-21deg);
+    }
+
+    .streak {
+      position: absolute;
+      left: -30%;
+      height: 3px;
+      border-radius: 999px;
+      filter: blur(0.4px);
+      opacity: 0.7;
+      animation: streak 7.5s linear infinite;
+    }
+
+    .streak:nth-child(1) { top: 12%; width: 42%; background: linear-gradient(90deg, transparent, var(--cyan-bright), transparent); animation-duration: 6.2s; }
+    .streak:nth-child(2) { top: 22%; width: 58%; background: linear-gradient(90deg, transparent, var(--deep), var(--purple), transparent); animation-duration: 8.4s; animation-delay: -2s; height: 5px; opacity: 0.55; }
+    .streak:nth-child(3) { top: 34%; width: 36%; background: linear-gradient(90deg, transparent, var(--cyan), transparent); animation-duration: 5.6s; animation-delay: -1.2s; }
+    .streak:nth-child(4) { top: 46%; width: 64%; background: linear-gradient(90deg, transparent, var(--violet), var(--blue), transparent); animation-duration: 9s; animation-delay: -4s; height: 2px; }
+    .streak:nth-child(5) { top: 58%; width: 48%; background: linear-gradient(90deg, transparent, var(--cyan-bright), transparent); animation-duration: 7s; animation-delay: -3.1s; }
+    .streak:nth-child(6) { top: 69%; width: 55%; background: linear-gradient(90deg, transparent, var(--purple), var(--deep), transparent); animation-duration: 8.8s; animation-delay: -5s; height: 6px; opacity: 0.5; }
+    .streak:nth-child(7) { top: 80%; width: 40%; background: linear-gradient(90deg, transparent, var(--cyan), transparent); animation-duration: 6.7s; animation-delay: -0.8s; }
+    .streak:nth-child(8) { top: 90%; width: 50%; background: linear-gradient(90deg, transparent, var(--blue), var(--violet), transparent); animation-duration: 7.8s; animation-delay: -2.6s; }
+
+    .grain {
+      z-index: 2;
+      opacity: 0.08;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .nav-stack {
+      position: fixed;
+      top: 0.85rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: grid;
+      justify-items: center;
+      gap: 0.4rem;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: 0.2rem;
+      padding: 0.28rem;
+      border-radius: 999px;
+      background: rgba(7, 1, 15, 0.78);
+      border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
+      box-shadow: 0 10px 32px rgba(48, 0, 89, 0.4);
+      backdrop-filter: blur(18px);
+    }
+
+    .site-nav-sub {
+      padding: 0.16rem;
+      transform: scale(0.92);
+      transform-origin: top center;
+      border-color: color-mix(in srgb, var(--violet) 40%, transparent);
+    }
+
+    .site-nav-sub .tab-link {
+      padding: 0.32rem 0.8rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.07em;
+    }
+
+    .tab-link {
+      padding: 0.52rem 1.05rem;
+      border-radius: 999px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.86rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .tab-link:hover,
+    .tab-link:focus-visible {
+      color: var(--fg);
+      outline: none;
+    }
+
+    .tab-link.is-active {
+      color: var(--fg);
+      background: linear-gradient(180deg, rgba(85, 79, 255, 0.62), rgba(48, 0, 89, 0.92));
+      box-shadow: 0 0 18px rgba(14, 186, 255, 0.2);
+    }
+
+    .hero,
+    .join,
+    .panel-rules,
+    .panel-modes,
+    .panel-packs,
+    .panel-updates,
+    .panel-events {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+      min-width: 0;
+      width: 100%;
+      padding: 7rem 1.25rem 5.5rem;
+    }
+
+    h1.logo-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: min(920px, 100%);
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    h1.logo-wrap::before {
+      content: "";
+      position: absolute;
+      width: 78%;
+      height: 62%;
+      background:
+        radial-gradient(closest-side, rgba(14, 186, 255, 0.32), transparent 72%),
+        radial-gradient(closest-side, rgba(119, 27, 255, 0.28), transparent 74%);
+      filter: blur(36px);
+      transform: translateY(6%);
+    }
+
+    .logo {
+      position: relative;
+      display: block;
+      width: 90vw;
+      max-width: 920px;
+      height: auto;
+      filter: drop-shadow(0 18px 30px rgba(48, 0, 89, 0.45));
+    }
+
+    .scroll-cue {
+      position: absolute;
+      bottom: 1.4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: grid;
+      justify-items: center;
+      gap: 0.35rem;
+      color: var(--cyan-bright);
+      text-decoration: none;
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .scroll-cue span {
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg);
+      animation: bob 1.8s ease-in-out infinite;
+    }
+
+    .join {
+      display: grid;
+      justify-items: center;
+      gap: 1.15rem;
+      padding: 5rem 1.25rem 6.5rem;
+      text-align: center;
+    }
+
+    .kicker {
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.05rem, 5.4vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0 1rem;
+      max-width: 100%;
+      color: var(--cyan-bright);
+      text-shadow: 0 0 22px rgba(14, 186, 255, 0.45);
+      transform: translateX(-3.2rem);
+      opacity: 0;
+      filter: blur(8px);
+      transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.7s ease, filter 0.7s ease;
+    }
+
+    .kicker.is-in,
+    .no-js .kicker {
+      transform: none;
+      opacity: 1;
+      filter: none;
+    }
+
+    .code-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.7rem 0.85rem;
+      margin-top: 0.35rem;
+      width: 100%;
+      max-width: 40rem;
+      padding: 0 0.5rem;
+    }
+
+    .code-line {
+      font-size: clamp(0.95rem, 2.2vw, 1.2rem);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--fg);
+    }
+
+    .code-line .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--cyan-bright);
+    }
+
+    .copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid color-mix(in srgb, var(--cyan) 70%, white);
+      background: rgba(14, 186, 255, 0.1);
+      color: var(--cyan-bright);
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(14, 186, 255, 0.18);
+    }
+
+    .copy svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .copy:hover,
+    .copy:focus-visible {
+      background: rgba(14, 186, 255, 0.2);
+      outline: none;
+    }
+
+    .copy.is-copied {
+      border-color: color-mix(in srgb, var(--violet) 70%, white);
+      color: #efe7ff;
+      background: rgba(119, 27, 255, 0.28);
+    }
+
+    .links {
+      display: grid;
+      justify-items: center;
+      gap: 0.7rem;
+      margin-top: 1.35rem;
+      width: min(18.5rem, 100%);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0.92rem 1.4rem;
+      border-radius: 12px;
+      font-family: Orbitron, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+      outline: none;
+    }
+
+    .discord {
+      color: #f4efff;
+      background: linear-gradient(180deg, #6a58ff 0%, var(--purple) 58%, var(--deep) 100%);
+      box-shadow: 0 10px 28px rgba(85, 79, 255, 0.32);
+    }
+
+    .youtube {
+      color: var(--cyan-bright);
+      background: rgba(7, 1, 15, 0.35);
+      border: 1px solid color-mix(in srgb, var(--cyan) 75%, white);
+      box-shadow: 0 8px 24px rgba(14, 186, 255, 0.18);
+    }
+
+    .rules-inline {
+      margin-top: 0.35rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.86rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    .rules-inline:hover,
+    .rules-inline:focus-visible {
+      color: var(--cyan-bright);
+      outline: none;
+    }
+
+    .panel-rules {
+      min-height: 100dvh;
+      padding: 7.5rem 1.25rem 4.5rem;
+    }
+
+    .rules-wrap {
+      width: min(42rem, 100%);
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .rules-title {
+      margin-bottom: 1.75rem;
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.6rem, 5vw, 2.3rem);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-align: center;
+      color: var(--cyan-bright);
+      text-shadow: 0 0 22px rgba(14, 186, 255, 0.4);
+    }
+
+    .rule-list {
+      list-style: none;
+    }
+
+    .rule {
+      padding: 0.95rem 0.15rem;
+      border-bottom: 1px solid rgba(114, 240, 255, 0.12);
+    }
+
+    .rule-name {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.35;
+    }
+
+    .rule-num {
+      color: var(--cyan-bright);
+      margin-right: 0.35rem;
+    }
+
+    .rule-note {
+      display: block;
+      margin-top: 0.28rem;
+      padding-left: 1.55rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--muted);
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    .appeals {
+      margin-top: 1.6rem;
+      padding: 1.15rem 1.2rem 1.2rem;
+      border-radius: 14px;
+      text-align: center;
+      background: rgba(48, 0, 89, 0.42);
+      border: 1px solid color-mix(in srgb, var(--purple) 55%, white);
+      box-shadow: 0 10px 28px rgba(48, 0, 89, 0.28);
+    }
+
+    .appeals-title {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--fg);
+    }
+
+    .appeals-note {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .panel-modes {
+      min-height: 100dvh;
+      padding: 7.5rem 1.25rem 4.5rem;
+    }
+
+    .modes-wrap {
+      width: min(58rem, 100%);
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .modes-title {
+      margin-bottom: 1.85rem;
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.6rem, 5vw, 2.3rem);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-align: center;
+      color: var(--cyan-bright);
+      text-shadow: 0 0 22px rgba(14, 186, 255, 0.4);
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.15rem;
+    }
+
+    .mode-card {
+      position: relative;
+      isolation: isolate;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 0.7rem;
+      min-height: 13.5rem;
+      padding: 1.7rem 1.15rem 1.5rem;
+      overflow: hidden;
+      border-radius: 18px;
+      text-align: center;
+      background:
+        linear-gradient(180deg, rgba(14, 186, 255, 0.1), rgba(48, 0, 89, 0.5) 58%, rgba(7, 1, 15, 0.72));
+      border: 1px solid color-mix(in srgb, var(--cyan) 42%, transparent);
+      box-shadow:
+        0 14px 34px rgba(48, 0, 89, 0.38),
+        inset 0 1px 0 rgba(114, 240, 255, 0.16);
+    }
+
+    .mode-card::before {
+      content: "";
+      position: absolute;
+      inset: auto 0 -35% 0;
+      height: 70%;
+      background: radial-gradient(ellipse at center, rgba(119, 27, 255, 0.38), transparent 68%);
+      z-index: -1;
+    }
+
+    .mode-card::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 12%;
+      right: 12%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan-bright), transparent);
+    }
+
+    .mode-card h2 {
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.12rem, 2.4vw, 1.42rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.25;
+      text-shadow: 0 0 18px rgba(14, 186, 255, 0.28);
+    }
+
+    .mode-desc {
+      max-width: 18.5rem;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .mode-desc strong {
+      color: var(--fg);
+      font-weight: 700;
+    }
+
+    .mode-card.team {
+      border-color: color-mix(in srgb, var(--violet) 55%, white);
+    }
+
+    .mode-card.team::after {
+      background: linear-gradient(90deg, transparent, var(--violet), transparent);
+    }
+
+    .mode-card.ffa {
+      border-color: color-mix(in srgb, var(--purple) 50%, var(--cyan));
+    }
+
+    .mode-card.ffa::after {
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--purple), transparent);
+    }
+
+    .panel-packs {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+      padding: 7.5rem 1.25rem 4.5rem;
+    }
+
+    .panel-updates,
+    .panel-events {
+      min-height: 100dvh;
+      padding: 7.5rem 1.25rem 4.5rem;
+    }
+
+    .feed-wrap {
+      width: min(36rem, 100%);
+      margin: 0 auto;
+    }
+
+    .feed-title {
+      margin-bottom: 1.5rem;
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-align: center;
+      color: var(--cyan-bright);
+      text-shadow: 0 0 22px rgba(14, 186, 255, 0.4);
+    }
+
+    .feed-list,
+    .event-list {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .update-card,
+    .event-card {
+      padding: 1.05rem 1.15rem 1.1rem;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(14, 186, 255, 0.08), rgba(48, 0, 89, 0.42));
+      border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
+      box-shadow: 0 10px 24px rgba(48, 0, 89, 0.28);
+    }
+
+    .update-time {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .update-body {
+      font-size: 0.98rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    .event-card {
+      text-align: center;
+    }
+
+    .event-card.live {
+      border-color: color-mix(in srgb, var(--cyan-bright) 70%, white);
+      box-shadow: 0 0 24px rgba(14, 186, 255, 0.22);
+    }
+
+    .event-type {
+      font-family: Orbitron, sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
+    }
+
+    .event-when {
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--cyan-bright);
+    }
+
+    .event-card.live .event-when {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .feed-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .coming-wrap {
+      display: grid;
+      justify-items: center;
+      gap: 1.15rem;
+      text-align: center;
+    }
+
+    .coming-wrap::before,
+    .coming-wrap::after {
+      content: "";
+      width: min(16rem, 58vw);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan-bright), var(--purple), transparent);
+    }
+
+    .coming-soon {
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(1.7rem, 7.2vw, 4.6rem);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      line-height: 1.05;
+      max-width: 100%;
+      padding: 0 0.4rem;
+      background: linear-gradient(115deg, var(--cyan-bright) 10%, var(--violet) 50%, var(--purple) 90%);
+      background-size: 180% 180%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 22px rgba(14, 186, 255, 0.28));
+      animation: soon-shift 4.5s ease-in-out infinite;
+    }
+
+    .panel-home[hidden],
+    .panel-rules[hidden],
+    .panel-modes[hidden],
+    .panel-packs[hidden],
+    .panel-updates[hidden],
+    .panel-events[hidden] {
+      display: none;
+    }
+
+    .no-js .panel-home[hidden],
+    .no-js .panel-rules[hidden],
+    .no-js .panel-modes[hidden],
+    .no-js .panel-packs[hidden],
+    .no-js .panel-updates[hidden],
+    .no-js .panel-events[hidden] {
+      display: block;
+    }
+
+    @keyframes streak {
+      0% { transform: translateX(-20%); opacity: 0; }
+      12% { opacity: 0.75; }
+      80% { opacity: 0.75; }
+      100% { transform: translateX(160%); opacity: 0; }
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: rotate(45deg) translate(0, 0); }
+      50% { transform: rotate(45deg) translate(3px, 3px); }
+    }
+
+    @keyframes soon-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @media (max-width: 560px) {
+      .kicker {
+        font-size: 1rem;
+        letter-spacing: 0.03em;
+      }
+
+      .code-row {
+        flex-direction: column;
+      }
+
+      .code-line {
+        font-size: 0.92rem;
+      }
+
+      .rule-note {
+        padding-left: 0;
+        font-size: 0.75rem;
+      }
+
+      .panel-rules,
+      .panel-modes,
+      .panel-packs,
+      .panel-updates,
+      .panel-events {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+      }
+
+      .site-nav-sub {
+        transform: scale(0.9);
+      }
+
+      .tab-link {
+        padding: 0.42rem 0.62rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+      }
+
+      .mode-grid {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+      }
+
+      .mode-card {
+        min-height: 8.5rem;
+        padding: 1.35rem 1rem 1.25rem;
+      }
+
+      .coming-soon {
+        font-size: 1.7rem;
+        letter-spacing: 0.04em;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .streak,
+      .scroll-cue span { animation: none; }
+      .kicker {
+        transform: none;
+        opacity: 1;
+        filter: none;
+        transition: none;
+      }
+      .coming-soon { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="streaks">
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+      <span class="streak"></span>
+    </div>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="nav-stack">
+    <nav class="site-nav" aria-label="Primary">
+      <a class="tab-link is-active" href="#home" data-target="home">Home</a>
+      <a class="tab-link" href="#modes" data-target="modes">Modes</a>
+      <a class="tab-link" href="#packs" data-target="packs">Packs</a>
+      <a class="tab-link" href="#rules" data-target="rules">Rules</a>
+    </nav>
+    <nav class="site-nav site-nav-sub" aria-label="Community">
+      <a class="tab-link" href="#updates" data-target="updates">Updates</a>
+      <a class="tab-link" href="#events" data-target="events">Events</a>
+    </nav>
+  </div>
+
+  <div class="panel-home" id="home">
+    <header class="hero">
+      <h1 class="logo-wrap">
+        <img class="logo" src="assets/DriftLogoV2.png" alt="Drift PVP" width="2006" height="1120">
+      </h1>
+      <a class="scroll-cue" href="#realm">Scroll <span></span></a>
+    </header>
+
+    <section class="join" id="realm">
+      <p class="kicker">Minecraft Bedrock Realm</p>
+      <div class="code-row">
+        <p class="code-line">Realm Code: <span class="code">JQ65GUBcQyVDfwY</span></p>
+        <button class="copy" type="button" aria-label="Copy realm code JQ65GUBcQyVDfwY">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"></path>
+          </svg>
+          <span class="copy-label">Copy</span>
+        </button>
+      </div>
+      <div class="links">
+        <a class="btn discord" href="https://discord.gg/7UrCD2U5pd" target="_blank" rel="noopener noreferrer">Discord</a>
+        <a class="btn youtube" href="https://www.youtube.com/@Drift_PVP" target="_blank" rel="noopener noreferrer">Youtube</a>
+        <a class="rules-inline" href="#modes">Modes</a>
+        <a class="rules-inline" href="#packs">Packs</a>
+        <a class="rules-inline" href="#rules">Rules</a>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel-rules" id="rules" hidden>
+    <div class="rules-wrap">
+      <h1 class="rules-title">Rules</h1>
+      <ol class="rule-list">
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">1.</span>No Inappropriate Language</strong>
+          <span class="rule-note">do not be sexual with your words. Swearing is fine if not directed, slurs are absolutely prohibited.</span>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">2.</span>No NSFW content</strong>
+          <span class="rule-note">this is a community and not meant to share that type of content.</span>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">3.</span>No spamming chat</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">4.</span>No Doxing</strong>
+          <span class="rule-note">No sending real life locations or names of anybody without their consent.</span>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">5.</span>Do not be toxic towards others</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">6.</span>No asking for staff</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">7.</span>No promotion</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">8.</span>No lagging the game</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">9.</span>No hacking/cheating</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">10.</span>No griefing spawn</strong>
+        </li>
+        <li class="rule">
+          <strong class="rule-name"><span class="rule-num">11.</span>No loopholes</strong>
+        </li>
+      </ol>
+      <div class="appeals">
+        <strong class="appeals-title">NO APPEALS</strong>
+        <span class="appeals-note">we don't do appeals for bans.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-modes" id="modes" hidden>
+    <div class="modes-wrap">
+      <h1 class="modes-title">Modes</h1>
+      <div class="mode-grid">
+        <article class="mode-card">
+          <h2>1v1 Duels</h2>
+          <p class="mode-desc">Duel your friends or <strong>challenge</strong> others!</p>
+        </article>
+        <article class="mode-card team">
+          <h2>Team duels</h2>
+          <p class="mode-desc">Play on a equal field or <strong>challenge</strong> yourself to take a outnumbered fight!</p>
+        </article>
+        <article class="mode-card ffa">
+          <h2>FFA</h2>
+          <p class="mode-desc">Play a chaotic free for all experience!</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-packs" id="packs" hidden>
+    <div class="coming-wrap">
+      <h1 class="coming-soon">Coming soon</h1>
+    </div>
+  </section>
+
+  <section class="panel-updates" id="updates" hidden>
+    <div class="feed-wrap">
+      <h1 class="feed-title">Updates</h1>
+      <div class="feed-list" id="updates-list">
+        <p class="feed-empty">Loading updates...</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-events" id="events" hidden>
+    <div class="feed-wrap">
+      <h1 class="feed-title">Events</h1>
+      <div class="event-list" id="events-list">
+        <p class="feed-empty">Loading events...</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="config.js"></script>
+  <script>
+    const REALM_CODE = "JQ65GUBcQyVDfwY";
+    const copyBtn = document.querySelector(".copy");
+    const copyLabel = document.querySelector(".copy-label");
+    const kicker = document.querySelector(".kicker");
+    const homePanel = document.querySelector(".panel-home");
+    const rulesPanel = document.querySelector(".panel-rules");
+    const modesPanel = document.querySelector(".panel-modes");
+    const packsPanel = document.querySelector(".panel-packs");
+    const updatesPanel = document.querySelector(".panel-updates");
+    const eventsPanel = document.querySelector(".panel-events");
+    const tabLinks = document.querySelectorAll(".tab-link");
+    const panels = {
+      home: homePanel,
+      rules: rulesPanel,
+      modes: modesPanel,
+      packs: packsPanel,
+      updates: updatesPanel,
+      events: eventsPanel
+    };
+    const titles = {
+      home: "Drift PVP",
+      rules: "Rules · Drift PVP",
+      modes: "Modes · Drift PVP",
+      packs: "Packs · Drift PVP",
+      updates: "Updates · Drift PVP",
+      events: "Events · Drift PVP"
+    };
+    const API_BASE = window.DRIFT_API || "";
+    let cachedEvents = [];
+
+    function jumpToHash() {
+      const target = document.querySelector(location.hash);
+      if (!target || Object.values(panels).includes(target)) return;
+      const html = document.documentElement;
+      const previous = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, target.offsetTop);
+      html.style.scrollBehavior = previous;
+    }
+
+    function showTab(name) {
+      const tab = panels[name] ? name : "home";
+      Object.entries(panels).forEach(([key, panel]) => {
+        panel.hidden = key !== tab;
+      });
+      document.body.dataset.tab = tab;
+      document.title = titles[tab];
+      tabLinks.forEach((link) => {
+        const active = link.dataset.target === tab;
+        link.classList.toggle("is-active", active);
+        if (active) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
+      });
+    }
+
+    function applyHash() {
+      const hash = location.hash.replace("#", "");
+      if (hash === "rules" || hash === "modes" || hash === "packs" || hash === "updates" || hash === "events") {
+        showTab(hash);
+        window.scrollTo(0, 0);
+        return;
+      }
+      showTab("home");
+      if (hash === "realm") jumpToHash();
+      else window.scrollTo(0, 0);
+    }
+
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    window.addEventListener("load", () => {
+      if (location.hash === "#realm") jumpToHash();
+    });
+
+    const reveal = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-in");
+          reveal.unobserve(entry.target);
+        }
+      }
+    }, { threshold: 0.55 });
+
+    reveal.observe(kicker);
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatStamp(ms) {
+      return new Date(ms).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+    }
+
+    function remainingLabel(startAt) {
+      const diff = startAt - Date.now();
+      if (diff <= 0) return "Happening Now";
+      const totalMins = Math.floor(diff / 60000);
+      const days = Math.floor(totalMins / (60 * 24));
+      const hours = Math.floor((totalMins % (60 * 24)) / 60);
+      const mins = totalMins % 60;
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      parts.push(`${mins}m`);
+      return parts.join(" ");
+    }
+
+    function renderUpdates(updates) {
+      const list = document.getElementById("updates-list");
+      if (!updates.length) {
+        list.innerHTML = '<p class="feed-empty">No updates yet.</p>';
+        return;
+      }
+      list.innerHTML = updates.map((item) => `
+        <article class="update-card">
+          <time class="update-time">${escapeHtml(formatStamp(item.createdAt))}</time>
+          <p class="update-body">${escapeHtml(item.message)}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderEvents(events) {
+      const list = document.getElementById("events-list");
+      if (!events.length) {
+        list.innerHTML = '<p class="feed-empty">No events scheduled.</p>';
+        return;
+      }
+      list.innerHTML = events.map((event) => {
+        const live = Date.now() >= event.startAt;
+        return `
+          <article class="event-card${live ? " live" : ""}">
+            <h2 class="event-type">${escapeHtml(event.type)}</h2>
+            <span class="event-when">${escapeHtml(remainingLabel(event.startAt))}</span>
+          </article>
+        `;
+      }).join("");
+    }
+
+    async function refreshFeeds() {
+      try {
+        const [updatesRes, eventsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/updates`),
+          fetch(`${API_BASE}/api/events`)
+        ]);
+        if (!updatesRes.ok || !eventsRes.ok) throw new Error("bad status");
+        const updatesData = await updatesRes.json();
+        const eventsData = await eventsRes.json();
+        cachedEvents = eventsData.events || [];
+        renderUpdates(updatesData.updates || []);
+        renderEvents(cachedEvents);
+      } catch {
+        const updatesList = document.getElementById("updates-list");
+        const eventsList = document.getElementById("events-list");
+        if (!updatesList.querySelector(".update-card")) {
+          updatesList.innerHTML = '<p class="feed-empty">Updates appear here when the Drift bot is running.</p>';
+        }
+        if (!eventsList.querySelector(".event-card")) {
+          eventsList.innerHTML = '<p class="feed-empty">Events appear here when the Drift bot is running.</p>';
+        }
+      }
+    }
+
+    refreshFeeds();
+    window.setInterval(refreshFeeds, 15000);
+    window.setInterval(() => {
+      if (cachedEvents.length) renderEvents(cachedEvents);
+    }, 1000);
+
+    async function copyRealmCode() {
+      try {
+        await navigator.clipboard.writeText(REALM_CODE);
+      } catch {
+        const field = document.createElement("textarea");
+        field.value = REALM_CODE;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.left = "-9999px";
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand("copy");
+        field.remove();
+      }
+
+      copyBtn.classList.add("is-copied");
+      copyLabel.textContent = "Copied";
+      window.setTimeout(() => {
+        copyBtn.classList.remove("is-copied");
+        copyLabel.textContent = "Copy";
+      }, 1600);
+    }
+
+    copyBtn.addEventListener("click", copyRealmCode);
+  </script>
+</body>
+</html>

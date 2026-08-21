@@ -1,0 +1,16 @@
+{
+  "name": "drift-pvp",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.0.10",
+    "cors": "^2.8.5",
+    "discord-interactions": "^4.1.1",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}

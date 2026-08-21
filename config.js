@@ -1,0 +1,1 @@
+window.DRIFT_API = "";
