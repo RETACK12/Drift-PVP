@@ -68,9 +68,30 @@ async function deleteChannelMessage(channelId, messageId) {
   }
 }
 
-async function listChannelMessages(channelId) {
+async function listChannelMessages(channelId, max = 300) {
   if (!channelId) return [];
-  return discordFetch(`/channels/${channelId}/messages?limit=100`);
+  const all = [];
+  let before;
+  while (all.length < max) {
+    const remaining = Math.min(100, max - all.length);
+    const query = before
+      ? `?limit=${remaining}&before=${before}`
+      : `?limit=${remaining}`;
+    const batch = await discordFetch(`/channels/${channelId}/messages${query}`);
+    if (!Array.isArray(batch) || !batch.length) break;
+    all.push(...batch);
+    before = batch[batch.length - 1].id;
+    if (batch.length < remaining) break;
+  }
+  return all;
+}
+
+async function patchChannelMessage(channelId, messageId, payload) {
+  if (!channelId || !messageId) return null;
+  return discordFetch(`/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
 }
 
 function option(interaction, name) {
@@ -92,6 +113,7 @@ module.exports = {
   postChannelMessage,
   deleteChannelMessage,
   listChannelMessages,
+  patchChannelMessage,
   option,
   subcommand
 };

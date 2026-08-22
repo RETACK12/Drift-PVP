@@ -1,8 +1,6 @@
-.env
 node_modules
 .git
+.netlify
 *.zip
 .chrome-tmp*
-.tmp-node
-.netlify
-data/db.json.tmp
+_seed-config.js

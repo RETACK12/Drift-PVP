@@ -1,5 +1,5 @@
 const { verifyKey } = require("discord-interactions");
-const { loadUpdates, loadEvents, nextId } = require("./_lib/store");
+const { loadUpdates, loadEvents, nextId, getGuildConfig, setGuildConfig, bindStore, WEBSITE_CODE } = require("./_lib/store");
 const {
   json,
   ephemeral,
@@ -28,6 +28,43 @@ function keepLines(text) {
     .trim();
 }
 
+function parseHexColor(value, fallback = 0x0ebaff) {
+  if (value == null || value === "") return fallback;
+  const named = { cyan: 0x0ebaff, purple: 0x771bff };
+  const lower = String(value).trim().toLowerCase();
+  if (named[lower] != null) return named[lower];
+  const hex = lower.replace(/^#/, "");
+  if (/^[0-9a-f]{6}$/.test(hex)) return parseInt(hex, 16);
+  return null;
+}
+
+function hexString(color) {
+  return color.toString(16).padStart(6, "0");
+}
+
+function pingFromConfig(cfg, kind) {
+  if (kind === "update") return cfg?.updatePing || null;
+  return cfg?.eventPing || null;
+}
+
+async function notifyAdmin(guildId, text) {
+  const cfg = await getGuildConfig(guildId);
+  if (!cfg?.adminUpdates) return;
+  try {
+    await postChannelMessage(cfg.adminUpdates, {
+      embeds: [
+        {
+          color: 0x0ebaff,
+          title: "Drift PVP",
+          description: text
+        }
+      ]
+    });
+  } catch (error) {
+    console.error("admin notify failed", error);
+  }
+}
+
 function modalValue(interaction, id) {
   for (const row of interaction.data?.components || []) {
     for (const field of row.components || []) {
@@ -37,8 +74,8 @@ function modalValue(interaction, id) {
   return "";
 }
 
-function sendModal(channelId, useEmbed, colorName) {
-  const customId = `send:${channelId}:${useEmbed ? "1" : "0"}:${colorName || "cyan"}`;
+function sendModal(channelId, useEmbed, color) {
+  const customId = `send:${channelId}:${useEmbed ? "1" : "0"}:${hexString(color)}`;
   const fields = [];
   if (useEmbed) {
     fields.push({
@@ -79,11 +116,11 @@ function sendModal(channelId, useEmbed, colorName) {
   });
 }
 
-function updateModal() {
+function updateModal(guildId, color) {
   return json(200, {
     type: 9,
     data: {
-      custom_id: "update:add",
+      custom_id: `update:add:${hexString(color)}:${guildId || ""}`.slice(0, 100),
       title: "Post update",
       components: [
         {
@@ -105,39 +142,43 @@ function updateModal() {
   });
 }
 
-async function postUpdateLog(message) {
-  const updates = await loadUpdates();
+async function postUpdateLog(message, guildId, color) {
+  const cfg = await getGuildConfig(guildId);
+  if (!cfg?.updates) throw new Error("Run /setup first to set the updates channel.");
+  const updates = await loadUpdates(guildId);
   const id = await nextId(updates);
   const createdAt = Date.now();
-  const updateRole = process.env.UPDATE_PING_ROLE_ID || "1536149945856426057";
-  await postChannelMessage(process.env.UPDATES_CHANNEL_ID, {
-    content: `<@&${updateRole}>`,
-    allowed_mentions: { roles: [updateRole] },
+  const updateRole = pingFromConfig(cfg, "update");
+  const payload = {
     embeds: [
       {
-        color: 0x0ebaff,
+        color: color ?? 0x0ebaff,
         title: "Drift PVP Update",
         description: message,
         footer: { text: `ID ${id}` },
         timestamp: new Date(createdAt).toISOString()
       }
     ]
-  });
-  return id;
+  };
+  if (updateRole) {
+    payload.content = `<@&${updateRole}>`;
+    payload.allowed_mentions = { roles: [updateRole] };
+  }
+  await postChannelMessage(cfg.updates, payload);
+  return { id, verified: Boolean(cfg.verified) };
 }
 
 async function handleSendModal(interaction) {
   const parts = String(interaction.data?.custom_id || "").split(":");
   const channelId = parts[1];
   const useEmbed = parts[2] === "1";
-  const colorName = parts[3] || "cyan";
+  const color = parseHexColor(parts[3], 0x0ebaff);
   const title = keepLines(modalValue(interaction, "title"));
   const message = keepLines(modalValue(interaction, "message"));
   if (!channelId || !message) return ephemeral("Channel and message are required.");
   if (useEmbed) {
-    const colors = { cyan: 0x0ebaff, purple: 0x771bff };
     const embed = {
-      color: colors[colorName] || colors.cyan,
+      color,
       description: message
     };
     if (title) embed.title = title;
@@ -149,6 +190,7 @@ async function handleSendModal(interaction) {
 }
 
 exports.handler = async (event) => {
+  bindStore(event);
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
@@ -174,11 +216,18 @@ exports.handler = async (event) => {
       if (customId.startsWith("send:")) {
         return await handleSendModal(interaction);
       }
-      if (customId === "update:add") {
+      if (customId.startsWith("update:add")) {
+        const parts = customId.split(":");
+        const color = parseHexColor(parts[2], 0x0ebaff);
+        const guildId = parts[3] || interaction.guild_id;
         const message = keepLines(modalValue(interaction, "message"));
         if (!message) return ephemeral("Message is required.");
-        const id = await postUpdateLog(message);
-        return ephemeral(`Update **#${id}** posted to the channel and the website.`);
+        const result = await postUpdateLog(message, guildId, color);
+        return ephemeral(
+          result.verified
+            ? `Update **#${result.id}** posted to the channel and the website.`
+            : `Update **#${result.id}** posted in Discord. Run /driftcode with the website code to show it on the site.`
+        );
       }
       return ephemeral("Unknown form.");
     } catch (error) {
@@ -199,30 +248,81 @@ exports.handler = async (event) => {
     const command = interaction.data?.name;
     const sub = subcommand(interaction);
 
+    const guildId = interaction.guild_id;
+
+    if (command === "setup") {
+      const updates = option(interaction, "updates");
+      const events = option(interaction, "events");
+      const updatePing = option(interaction, "update_ping");
+      const eventPing = option(interaction, "events_ping");
+      const adminUpdates = option(interaction, "admin_updates");
+      if (!guildId) return ephemeral("Use this in a server.");
+      if (!updates || !events || !updatePing || !eventPing || !adminUpdates) {
+        return ephemeral("Fill every setup field: updates, events, update ping, events ping, and admin updates.");
+      }
+      const cfg = await setGuildConfig(guildId, {
+        updates,
+        events,
+        updatePing,
+        eventPing,
+        adminUpdates
+      });
+      const text = cfg.verified
+        ? "Setup saved. Updates and events from this server can show on the website."
+        : "Setup saved for this server. Run `/driftcode` with the website code to show posts on driftpvp.com.";
+      await notifyAdmin(guildId, text);
+      return ephemeral(text);
+    }
+
+    if (command === "driftcode") {
+      if (!guildId) return ephemeral("Use this in a server.");
+      const code = String(option(interaction, "code") || "");
+      if (code !== WEBSITE_CODE) {
+        await setGuildConfig(guildId, { verified: false });
+        const text = "Wrong code. This server will not show on the website.";
+        await notifyAdmin(guildId, text);
+        return ephemeral(text);
+      }
+      const cfg = await setGuildConfig(guildId, { verified: true });
+      const text =
+        !cfg.updates || !cfg.events
+          ? "Code accepted. Run `/setup` to set the updates and events channels so they can appear on the website."
+          : "Code accepted. This server's updates and events can now show on the website.";
+      await notifyAdmin(guildId, text);
+      return ephemeral(text);
+    }
+
     if (command === "send") {
       const channelId = option(interaction, "channel");
       const useEmbed = Boolean(option(interaction, "embed"));
-      const colorName = String(option(interaction, "color") || "cyan");
+      const color = parseHexColor(option(interaction, "hex") || option(interaction, "color"), 0x0ebaff);
+      if (color == null) return ephemeral("Hex must look like `#0ebaff` or `0ebaff`.");
       if (!channelId) return ephemeral("Channel is required.");
-      return sendModal(channelId, useEmbed, colorName);
+      return sendModal(channelId, useEmbed, color);
     }
 
     if (command === "update") {
       if (sub === "add") {
-        return updateModal();
+        if (!guildId) return ephemeral("Use this in a server.");
+        const cfg = await getGuildConfig(guildId);
+        if (!cfg?.updates) return ephemeral("Run `/setup` first to set the updates channel.");
+        const color = parseHexColor(option(interaction, "hex"), 0x0ebaff);
+        if (color == null) return ephemeral("Hex must look like `#0ebaff` or `0ebaff`.");
+        return updateModal(guildId, color);
       }
 
       if (sub === "delete") {
         const id = String(option(interaction, "id") || "").replace(/^#/, "");
-        const updates = await loadUpdates();
+        const updates = await loadUpdates(guildId);
         const found = updates.find((item) => item.id === id);
         if (!found) return ephemeral(`No update with ID **${id}**.`);
-        await deleteChannelMessage(process.env.UPDATES_CHANNEL_ID, found.discordMessageId);
+        const cfg = await getGuildConfig(guildId);
+        await deleteChannelMessage(cfg?.updates, found.discordMessageId);
         return ephemeral(`Deleted update **#${id}**.`);
       }
 
       if (sub === "list") {
-        const updates = await loadUpdates();
+        const updates = await loadUpdates(guildId);
         if (!updates.length) return ephemeral("No updates yet.");
         return ephemeral(
           updates
@@ -235,42 +335,55 @@ exports.handler = async (event) => {
 
     if (command === "event") {
       if (sub === "add") {
+        if (!guildId) return ephemeral("Use this in a server.");
+        const cfg = await getGuildConfig(guildId);
+        if (!cfg?.events) return ephemeral("Run `/setup` first to set the events channel.");
         const type = option(interaction, "type");
         const days = Number(option(interaction, "days") || 0);
         const hours = Number(option(interaction, "hours") || 0);
         const minutes = Number(option(interaction, "minutes") || 0);
+        const color = parseHexColor(option(interaction, "hex"), 0x771bff);
+        if (color == null) return ephemeral("Hex must look like `#771bff` or `771bff`.");
         const delayMs = ((days * 24 + hours) * 60 + minutes) * 60 * 1000;
         const startAt = Date.now() + delayMs;
-        const events = await loadEvents();
+        const events = await loadEvents(guildId);
         const id = await nextId(events);
         const unix = Math.floor(startAt / 1000);
-        const eventRole = process.env.EVENT_PING_ROLE_ID || "1536149679874510948";
-        await postChannelMessage(process.env.EVENTS_CHANNEL_ID, {
-          content: `<@&${eventRole}>`,
-          allowed_mentions: { roles: [eventRole] },
+        const eventRole = pingFromConfig(cfg, "event");
+        const payload = {
           embeds: [
             {
-              color: 0x771bff,
+              color,
               title: type,
               description: delayMs === 0 ? `**Happening Now**\n<t:${unix}:F>` : `Starts <t:${unix}:F>\nCountdown: <t:${unix}:R>`,
               footer: { text: `ID ${id}` }
             }
           ]
-        });
-        return ephemeral(`Event **#${id}** (${type}) scheduled and added to the website.`);
+        };
+        if (eventRole) {
+          payload.content = `<@&${eventRole}>`;
+          payload.allowed_mentions = { roles: [eventRole] };
+        }
+        await postChannelMessage(cfg.events, payload);
+        return ephemeral(
+          cfg.verified
+            ? `Event **#${id}** (${type}) scheduled and added to the website.`
+            : `Event **#${id}** (${type}) scheduled in Discord. Run /driftcode with the website code to show it on the site.`
+        );
       }
 
       if (sub === "delete") {
         const id = String(option(interaction, "id") || "").replace(/^#/, "");
-        const events = await loadEvents();
+        const events = await loadEvents(guildId);
         const found = events.find((item) => item.id === id);
         if (!found) return ephemeral(`No event with ID **${id}**.`);
-        await deleteChannelMessage(process.env.EVENTS_CHANNEL_ID, found.discordMessageId);
+        const cfg = await getGuildConfig(guildId);
+        await deleteChannelMessage(cfg?.events, found.discordMessageId);
         return ephemeral(`Deleted event **#${id}**.`);
       }
 
       if (sub === "list") {
-        const events = await loadEvents();
+        const events = await loadEvents(guildId);
         if (!events.length) return ephemeral("No events scheduled.");
         return ephemeral(
           events

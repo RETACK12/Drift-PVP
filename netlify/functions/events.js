@@ -1,6 +1,7 @@
-const { loadEvents } = require("./_lib/store");
+const { loadEvents, bindStore } = require("./_lib/store");
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+  bindStore(event);
   try {
     const events = await loadEvents();
     return {
