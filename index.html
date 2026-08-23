@@ -79,17 +79,6 @@
       font-size: 1.08rem;
       font-weight: 700;
       letter-spacing: 0.04em;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(-8px);
-      transition: opacity 0.28s ease, transform 0.28s ease;
-    }
-
-    body.is-top .brand,
-    .no-js .brand {
-      opacity: 1;
-      pointer-events: auto;
-      transform: none;
     }
 
     .brand-drift {
@@ -771,8 +760,7 @@
       html { scroll-behavior: auto; }
       .social-dock,
       .bottom-bar,
-      .tab-ink,
-      .brand { transition: none; }
+      .tab-ink { transition: none; }
       .kicker {
         transform: none;
         opacity: 1;
@@ -782,7 +770,7 @@
     }
   </style>
 </head>
-<body class="is-top">
+<body>
   <canvas class="orb-field" id="orb-field" aria-hidden="true"></canvas>
   <header class="top-bar">
     <a class="brand" href="#home" aria-label="Drift PVP">
@@ -978,7 +966,6 @@
       const doc = document.documentElement;
       const remaining = doc.scrollHeight - (window.scrollY + window.innerHeight);
       document.body.classList.toggle("is-bottom", remaining <= 56);
-      document.body.classList.toggle("is-top", window.scrollY <= 16);
       window.requestAnimationFrame(() => moveInks(document.body.dataset.tab || "home"));
     }
 
