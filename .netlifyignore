@@ -4,3 +4,4 @@ node_modules
 *.zip
 .chrome-tmp*
 _seed-config.js
+_shot.js
