@@ -48,6 +48,18 @@ const commands = [
         description: "Channel for setup and bot notifications",
         required: true,
         channel_types: [0, 5]
+      },
+      {
+        type: 8,
+        name: "boost_ping",
+        description: "Role to ping when someone boosts",
+        required: true
+      },
+      {
+        type: 8,
+        name: "drift_plus",
+        description: "Drift+ role given to boosters",
+        required: true
       }
     ]
   },
@@ -102,7 +114,8 @@ const commands = [
             choices: [
               { name: "Team duel", value: "Team duel" },
               { name: "FFA", value: "FFA" },
-              { name: "Tournament", value: "Tournament" }
+              { name: "Tournament", value: "Tournament" },
+              { name: "Custom", value: "Custom" }
             ]
           },
           { type: 4, name: "days", description: "Days until it starts", min_value: 0, max_value: 365 },
@@ -149,6 +162,26 @@ const commands = [
         ]
       },
       HEX
+    ]
+  },
+  {
+    name: "edit",
+    description: "Edit a message, embed, update, or event the bot sent",
+    default_member_permissions: ADMIN,
+    options: [
+      {
+        type: 3,
+        name: "message_id",
+        description: "Message ID",
+        required: true
+      },
+      {
+        type: 7,
+        name: "channel",
+        description: "Channel the message is in, if it is not an update or event",
+        required: false,
+        channel_types: [0, 5]
+      }
     ]
   }
 ];

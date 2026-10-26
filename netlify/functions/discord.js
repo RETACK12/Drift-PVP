@@ -6,6 +6,8 @@ const {
   isAdmin,
   postChannelMessage,
   deleteChannelMessage,
+  patchChannelMessage,
+  getChannelMessage,
   option,
   subcommand
 } = require("./_lib/discord");
@@ -116,6 +118,20 @@ function sendModal(channelId, useEmbed, color) {
   });
 }
 
+function textInput(customId, label, style, maxLength, required, value, placeholder) {
+  const field = {
+    type: 4,
+    custom_id: customId,
+    style,
+    label,
+    required,
+    max_length: maxLength
+  };
+  if (placeholder) field.placeholder = placeholder;
+  if (value) field.value = String(value).slice(0, maxLength);
+  return { type: 1, components: [field] };
+}
+
 function updateModal(guildId, color) {
   return json(200, {
     type: 9,
@@ -189,6 +205,151 @@ async function handleSendModal(interaction) {
   return ephemeral("Message sent.");
 }
 
+function customEventModal(guildId, days, hours, minutes, color) {
+  return json(200, {
+    type: 9,
+    data: {
+      custom_id: `event:custom:${days}:${hours}:${minutes}:${hexString(color)}:${guildId}`.slice(0, 100),
+      title: "Custom event",
+      components: [
+        textInput("name", "Event name", 1, 100, true),
+        textInput("details", "Details", 2, 1000, false, "", "Any extra text. Line breaks stay.")
+      ]
+    }
+  });
+}
+
+async function postScheduledEvent(guildId, type, details, days, hours, minutes, color) {
+  const cfg = await getGuildConfig(guildId);
+  if (!cfg?.events) throw new Error("Run /setup first to set the events channel.");
+  const delayMs = ((days * 24 + hours) * 60 + minutes) * 60 * 1000;
+  const startAt = Date.now() + delayMs;
+  const events = await loadEvents(guildId);
+  const id = await nextId(events);
+  const unix = Math.floor(startAt / 1000);
+  const when = delayMs === 0 ? `**Happening Now**\n<t:${unix}:F>` : `Starts <t:${unix}:F>\nCountdown: <t:${unix}:R>`;
+  const description = details ? `${details}\n\n${when}` : when;
+  const eventRole = pingFromConfig(cfg, "event");
+  const payload = {
+    embeds: [
+      {
+        color: color ?? 0x771bff,
+        title: type,
+        description,
+        footer: { text: `ID ${id}` }
+      }
+    ]
+  };
+  if (eventRole) {
+    payload.content = `<@&${eventRole}>`;
+    payload.allowed_mentions = { roles: [eventRole] };
+  }
+  await postChannelMessage(cfg.events, payload);
+  return { id, type, verified: Boolean(cfg.verified) };
+}
+
+async function findEditableMessage(guildId, messageId, channelHint) {
+  const cfg = await getGuildConfig(guildId);
+  const ordered = [];
+  const push = (id) => {
+    if (id && !ordered.includes(id)) ordered.push(id);
+  };
+  push(channelHint);
+  push(cfg?.updates);
+  push(cfg?.events);
+  push(cfg?.adminUpdates);
+  for (const channelId of ordered) {
+    try {
+      const message = await getChannelMessage(channelId, messageId);
+      if (message?.id && message.author?.id === process.env.DISCORD_CLIENT_ID) {
+        return { channelId, message };
+      }
+    } catch {
+      /* not in this channel */
+    }
+  }
+  return null;
+}
+
+function editModal(channelId, message) {
+  const embed = message.embeds?.[0];
+  const components = [
+    textInput(
+      "content",
+      "Message",
+      2,
+      2000,
+      !embed,
+      message.content || "",
+      embed ? "Ping or text above the embed. Leave blank to clear it." : "Message text. Line breaks stay."
+    )
+  ];
+  if (embed) {
+    components.push(textInput("title", "Embed title", 1, 256, false, embed.title || ""));
+    components.push(
+      textInput("description", "Embed text", 2, 4000, false, embed.description || "", "Keep the countdown lines if this is an event.")
+    );
+  }
+  return json(200, {
+    type: 9,
+    data: {
+      custom_id: `edit:${channelId}:${message.id}`.slice(0, 100),
+      title: embed ? "Edit embed" : "Edit message",
+      components
+    }
+  });
+}
+
+async function handleEditModal(interaction) {
+  const parts = String(interaction.data?.custom_id || "").split(":");
+  const channelId = parts[1];
+  const messageId = parts[2];
+  const current = await getChannelMessage(channelId, messageId);
+  if (!current || current.author?.id !== process.env.DISCORD_CLIENT_ID) {
+    return ephemeral("That message was not sent by the bot.");
+  }
+  const content = keepLines(modalValue(interaction, "content"));
+  const title = keepLines(modalValue(interaction, "title"));
+  const description = keepLines(modalValue(interaction, "description"));
+  const hadEmbed = Boolean(current.embeds?.length);
+  const payload = {};
+  if (hadEmbed) {
+    const prev = current.embeds[0];
+    const embed = {};
+    if (prev.color != null) embed.color = prev.color;
+    if (prev.footer) embed.footer = prev.footer;
+    if (prev.timestamp) embed.timestamp = prev.timestamp;
+    if (title) embed.title = title;
+    if (description) embed.description = description;
+    if (!embed.title && !embed.description) return ephemeral("The embed needs a title or text.");
+    payload.embeds = [embed];
+    payload.content = content;
+  } else {
+    if (!content) return ephemeral("Message cannot be blank.");
+    payload.content = content;
+  }
+  await patchChannelMessage(channelId, messageId, payload);
+  return ephemeral("Message updated.");
+}
+
+async function handleCustomEventModal(interaction) {
+  const parts = String(interaction.data?.custom_id || "").split(":");
+  const days = Number(parts[2] || 0);
+  const hours = Number(parts[3] || 0);
+  const minutes = Number(parts[4] || 0);
+  const color = parseHexColor(parts[5], 0x771bff);
+  const guildId = parts[6] || interaction.guild_id;
+  const name = keepLines(modalValue(interaction, "name")).slice(0, 100);
+  const details = keepLines(modalValue(interaction, "details"));
+  if (!name) return ephemeral("Event name is required.");
+  const result = await postScheduledEvent(guildId, name, details, days, hours, minutes, color);
+  return ephemeral(
+    result.verified
+      ? `Event **#${result.id}** (${result.type}) scheduled and added to the website.`
+      : `Event **#${result.id}** (${result.type}) scheduled in Discord. Run /driftcode with the website code to show it on the site.`
+  );
+}
+
 exports.handler = async (event) => {
   bindStore(event);
   if (event.httpMethod !== "POST") {
@@ -215,6 +376,12 @@ exports.handler = async (event) => {
       const customId = String(interaction.data?.custom_id || "");
       if (customId.startsWith("send:")) {
         return await handleSendModal(interaction);
+      }
+      if (customId.startsWith("edit:")) {
+        return await handleEditModal(interaction);
+      }
+      if (customId.startsWith("event:custom:")) {
+        return await handleCustomEventModal(interaction);
       }
       if (customId.startsWith("update:add")) {
         const parts = customId.split(":");
@@ -256,16 +423,20 @@ exports.handler = async (event) => {
       const updatePing = option(interaction, "update_ping");
       const eventPing = option(interaction, "events_ping");
       const adminUpdates = option(interaction, "admin_updates");
+      const boostPing = option(interaction, "boost_ping");
+      const driftPlus = option(interaction, "drift_plus");
       if (!guildId) return ephemeral("Use this in a server.");
-      if (!updates || !events || !updatePing || !eventPing || !adminUpdates) {
-        return ephemeral("Fill every setup field: updates, events, update ping, events ping, and admin updates.");
+      if (!updates || !events || !updatePing || !eventPing || !adminUpdates || !boostPing || !driftPlus) {
+        return ephemeral("Fill every setup field, including the boost ping role and the Drift+ role.");
       }
       const cfg = await setGuildConfig(guildId, {
         updates,
         events,
         updatePing,
         eventPing,
-        adminUpdates
+        adminUpdates,
+        boostPing,
+        driftPlus
       });
       const text = cfg.verified
         ? "Setup saved. Updates and events from this server can show on the website."
@@ -344,31 +515,12 @@ exports.handler = async (event) => {
         const minutes = Number(option(interaction, "minutes") || 0);
         const color = parseHexColor(option(interaction, "hex"), 0x771bff);
         if (color == null) return ephemeral("Hex must look like `#771bff` or `771bff`.");
-        const delayMs = ((days * 24 + hours) * 60 + minutes) * 60 * 1000;
-        const startAt = Date.now() + delayMs;
-        const events = await loadEvents(guildId);
-        const id = await nextId(events);
-        const unix = Math.floor(startAt / 1000);
-        const eventRole = pingFromConfig(cfg, "event");
-        const payload = {
-          embeds: [
-            {
-              color,
-              title: type,
-              description: delayMs === 0 ? `**Happening Now**\n<t:${unix}:F>` : `Starts <t:${unix}:F>\nCountdown: <t:${unix}:R>`,
-              footer: { text: `ID ${id}` }
-            }
-          ]
-        };
-        if (eventRole) {
-          payload.content = `<@&${eventRole}>`;
-          payload.allowed_mentions = { roles: [eventRole] };
-        }
-        await postChannelMessage(cfg.events, payload);
+        if (type === "Custom") return customEventModal(guildId, days, hours, minutes, color);
+        const result = await postScheduledEvent(guildId, type, "", days, hours, minutes, color);
         return ephemeral(
-          cfg.verified
-            ? `Event **#${id}** (${type}) scheduled and added to the website.`
-            : `Event **#${id}** (${type}) scheduled in Discord. Run /driftcode with the website code to show it on the site.`
+          result.verified
+            ? `Event **#${result.id}** (${result.type}) scheduled and added to the website.`
+            : `Event **#${result.id}** (${result.type}) scheduled in Discord. Run /driftcode with the website code to show it on the site.`
         );
       }
 
@@ -394,6 +546,17 @@ exports.handler = async (event) => {
             .join("\n")
         );
       }
+    }
+
+    if (command === "edit") {
+      if (!guildId) return ephemeral("Use this in a server.");
+      const messageId = String(option(interaction, "message_id") || "").replace(/\D/g, "");
+      if (!/^\d{17,22}$/.test(messageId)) return ephemeral("That is not a message ID.");
+      const found = await findEditableMessage(guildId, messageId, option(interaction, "channel"));
+      if (!found) {
+        return ephemeral("No bot message with that ID in the update, event, or admin channel. Pick the channel too for a /send message.");
+      }
+      return editModal(found.channelId, found.message);
     }
 
     return ephemeral("Unknown command.");

@@ -16,6 +16,8 @@ const EMPTY_CONFIG = {
   adminUpdates: null,
   updatePing: null,
   eventPing: null,
+  boostPing: null,
+  driftPlus: null,
   verified: false
 };
 
@@ -70,6 +72,8 @@ function envSeed() {
       adminUpdates: process.env.ADMIN_UPDATES_CHANNEL_ID,
       updatePing: process.env.UPDATE_PING_ROLE_ID,
       eventPing: process.env.EVENT_PING_ROLE_ID,
+      boostPing: process.env.BOOST_PING_ROLE_ID,
+      driftPlus: process.env.DRIFT_PLUS_ROLE_ID,
       verified: false
     })
   };
@@ -180,7 +184,9 @@ async function readGuilds() {
 }
 
 function isEventEmbed(embed) {
-  return Boolean(embed && EVENT_TYPES.has(embed.title));
+  if (!embed?.title || embed.title === "Drift PVP Update") return false;
+  if (EVENT_TYPES.has(embed.title)) return true;
+  return /<t:\d+:/.test(embed.description || "");
 }
 
 function footerId(embed) {

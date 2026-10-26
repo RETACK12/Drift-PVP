@@ -10,7 +10,11 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
-  MessageFlags
+  MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder
 } = require("discord.js");
 
 require("dotenv").config({ path: path.join(__dirname, ".env") });
@@ -105,7 +109,8 @@ const commands = [
             .addChoices(
               { name: "Team duel", value: "Team duel" },
               { name: "FFA", value: "FFA" },
-              { name: "Tournament", value: "Tournament" }
+              { name: "Tournament", value: "Tournament" },
+              { name: "Custom", value: "Custom" }
             )
         )
         .addIntegerOption((opt) =>
@@ -124,7 +129,18 @@ const commands = [
         .setDescription("Delete an event")
         .addStringOption((opt) => opt.setName("id").setDescription("Event ID").setRequired(true))
     )
-    .addSubcommand((sub) => sub.setName("list").setDescription("List event IDs"))
+    .addSubcommand((sub) => sub.setName("list").setDescription("List event IDs")),
+  new SlashCommandBuilder()
+    .setName("edit")
+    .setDescription("Edit a message, embed, update, or event the bot sent")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addStringOption((opt) => opt.setName("message_id").setDescription("Message ID").setRequired(true))
+    .addChannelOption((opt) =>
+      opt
+        .setName("channel")
+        .setDescription("Channel the message is in, if it is not an update or event")
+        .addChannelTypes(0, 5)
+    )
 ].map((command) => command.toJSON());
 
 async function registerCommands() {
@@ -153,13 +169,188 @@ async function deleteDiscordMessage(client, channelId, messageId) {
   }
 }
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+});
+
+async function driftRoleConfig(guildId) {
+  const config = {
+    driftPlus: process.env.DRIFT_PLUS_ROLE_ID || null,
+    boostPing: process.env.BOOST_PING_ROLE_ID || null,
+    adminUpdates: process.env.ADMIN_UPDATES_CHANNEL_ID || null
+  };
+  try {
+    const { getGuildConfig } = require("./netlify/functions/_lib/store");
+    const saved = await getGuildConfig(guildId);
+    if (saved?.driftPlus) config.driftPlus = saved.driftPlus;
+    if (saved?.boostPing) config.boostPing = saved.boostPing;
+    if (saved?.adminUpdates) config.adminUpdates = saved.adminUpdates;
+  } catch (error) {
+    console.error("drift config", error);
+  }
+  return config;
+}
+
+function modalRow(id, label, style, max, required, value, placeholder) {
+  const input = new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(style).setMaxLength(max).setRequired(required);
+  if (placeholder) input.setPlaceholder(placeholder);
+  if (value) input.setValue(String(value).slice(0, max));
+  return new ActionRowBuilder().addComponents(input);
+}
+
+async function findBotMessage(guild, messageId, channelHint) {
+  const ids = [
+    channelHint,
+    process.env.UPDATES_CHANNEL_ID,
+    process.env.EVENTS_CHANNEL_ID,
+    process.env.ADMIN_UPDATES_CHANNEL_ID
+  ].filter(Boolean);
+  const seen = new Set();
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    try {
+      const channel = await guild.channels.fetch(id);
+      if (!channel?.isTextBased?.()) continue;
+      const message = await channel.messages.fetch(messageId);
+      if (message?.author?.id === client.user?.id) return message;
+    } catch {
+      /* not in this channel */
+    }
+  }
+  return null;
+}
 
 client.once("ready", () => {
   console.log(`Discord bot online as ${client.user.tag}`);
 });
 
+client.on("guildMemberUpdate", async (before, after) => {
+  try {
+    const wasBoosting = Boolean(before.premiumSince);
+    const isBoosting = Boolean(after.premiumSince);
+    if (wasBoosting === isBoosting) return;
+    const config = await driftRoleConfig(after.guild.id);
+    if (isBoosting) {
+      if (config.driftPlus) await after.roles.add(config.driftPlus);
+      if (config.boostPing && config.adminUpdates) {
+        const channel = await client.channels.fetch(config.adminUpdates);
+        await channel.send({
+          content: `<@&${config.boostPing}> ${after} boosted the server and got Drift+.`,
+          allowedMentions: { roles: [config.boostPing] }
+        });
+      }
+      return;
+    }
+    if (config.driftPlus && after.roles.cache.has(config.driftPlus)) {
+      await after.roles.remove(config.driftPlus);
+    }
+  } catch (error) {
+    console.error("boost role", error);
+  }
+});
+
 client.on("interactionCreate", async (interaction) => {
+  if (interaction.isModalSubmit()) {
+    if (!isAdmin(interaction)) {
+      await interaction.reply({ content: "Only admins can use this command.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    try {
+      if (interaction.customId.startsWith("event:custom:")) {
+        const [, , days, hours, minutes] = interaction.customId.split(":");
+        const name = interaction.fields.getTextInputValue("name").trim().slice(0, 100);
+        const details = interaction.fields.getTextInputValue("details").trim();
+        if (!name) {
+          await interaction.reply({ content: "Event name is required.", flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const delayMs = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 * 1000;
+        const startAt = Date.now() + delayMs;
+        const db = pruneEvents(loadDb());
+        const id = String(db.nextEventId++);
+        const unix = Math.floor(startAt / 1000);
+        const when = delayMs === 0 ? `**Happening Now**\n<t:${unix}:F>` : `Starts <t:${unix}:F>\nCountdown: <t:${unix}:R>`;
+        const embed = new EmbedBuilder()
+          .setColor(0x771bff)
+          .setTitle(name)
+          .setDescription(details ? `${details}\n\n${when}` : when)
+          .setFooter({ text: `ID ${id}` });
+        const eventRole = process.env.EVENT_PING_ROLE_ID || "1536149679874510948";
+        const discordMessageId = await postToChannel(client, process.env.EVENTS_CHANNEL_ID, {
+          content: `<@&${eventRole}>`,
+          allowedMentions: { roles: [eventRole] },
+          embeds: [embed]
+        });
+        db.events.push({
+          id,
+          type: name,
+          startAt,
+          createdAt: Date.now(),
+          authorId: interaction.user.id,
+          discordMessageId
+        });
+        saveDb(db);
+        await interaction.reply({
+          content: `Event **#${id}** (${name}) scheduled and added to the website.`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      if (interaction.customId.startsWith("edit:")) {
+        const [, channelId, messageId] = interaction.customId.split(":");
+        const channel = await interaction.guild.channels.fetch(channelId);
+        const message = channel?.isTextBased?.() ? await channel.messages.fetch(messageId) : null;
+        if (!message || message.author?.id !== client.user?.id) {
+          await interaction.reply({ content: "That bot message is gone.", flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const content = interaction.fields.getTextInputValue("content").trim();
+        const embed = message.embeds[0];
+        if (embed) {
+          const title = interaction.fields.getTextInputValue("title").trim();
+          const description = interaction.fields.getTextInputValue("description").trim();
+          if (!title && !description) {
+            await interaction.reply({ content: "The embed needs a title or text.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          const next = EmbedBuilder.from(embed);
+          next.setTitle(title || null);
+          next.setDescription(description || null);
+          await message.edit({ content, embeds: [next] });
+        } else {
+          if (!content) {
+            await interaction.reply({ content: "Message cannot be blank.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          await message.edit({ content });
+        }
+        const db = loadDb();
+        const update = db.updates.find((item) => item.discordMessageId === message.id);
+        if (update && embed) {
+          update.message = interaction.fields.getTextInputValue("description").trim() || update.message;
+          saveDb(db);
+        }
+        const event = db.events.find((item) => item.discordMessageId === message.id);
+        if (event && embed) {
+          const title = interaction.fields.getTextInputValue("title").trim();
+          if (title) event.type = title;
+          saveDb(db);
+        }
+        await interaction.reply({ content: "Message updated.", flags: MessageFlags.Ephemeral });
+      }
+    } catch (error) {
+      console.error(error);
+      const text = "Something went wrong editing that.";
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: text, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.reply({ content: text, flags: MessageFlags.Ephemeral });
+      }
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   if (!isAdmin(interaction)) {
@@ -244,6 +435,17 @@ client.on("interactionCreate", async (interaction) => {
         const days = interaction.options.getInteger("days") || 0;
         const hours = interaction.options.getInteger("hours") || 0;
         const minutes = interaction.options.getInteger("minutes") || 0;
+        if (type === "Custom") {
+          const modal = new ModalBuilder()
+            .setCustomId(`event:custom:${days}:${hours}:${minutes}`)
+            .setTitle("Custom event")
+            .addComponents(
+              modalRow("name", "Event name", TextInputStyle.Short, 100, true),
+              modalRow("details", "Details", TextInputStyle.Paragraph, 1000, false, "", "Any extra text. Line breaks stay.")
+            );
+          await interaction.showModal(modal);
+          return;
+        }
         const delayMs = ((days * 24 + hours) * 60 + minutes) * 60 * 1000;
         const startAt = Date.now() + delayMs;
         const id = String(db.nextEventId++);
@@ -308,6 +510,41 @@ client.on("interactionCreate", async (interaction) => {
         });
         await interaction.reply({ content: lines.join("\n"), flags: MessageFlags.Ephemeral });
       }
+    }
+
+    if (interaction.commandName === "edit") {
+      const messageId = String(interaction.options.getString("message_id", true)).replace(/\D/g, "");
+      const channel = interaction.options.getChannel("channel");
+      const message = await findBotMessage(interaction.guild, messageId, channel?.id);
+      if (!message) {
+        await interaction.reply({
+          content: "No bot message with that ID in the update, event, or admin channel. Pick the channel too for a /send message.",
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      const embed = message.embeds[0];
+      const modal = new ModalBuilder()
+        .setCustomId(`edit:${message.channelId}:${message.id}`)
+        .setTitle(embed ? "Edit embed" : "Edit message");
+      modal.addComponents(
+        modalRow(
+          "content",
+          "Message",
+          TextInputStyle.Paragraph,
+          2000,
+          !embed,
+          message.content || "",
+          embed ? "Ping or text above the embed." : "Message text. Line breaks stay."
+        )
+      );
+      if (embed) {
+        modal.addComponents(
+          modalRow("title", "Embed title", TextInputStyle.Short, 256, false, embed.title || ""),
+          modalRow("description", "Embed text", TextInputStyle.Paragraph, 4000, false, embed.description || "", "Keep the countdown lines if this is an event.")
+        );
+      }
+      await interaction.showModal(modal);
     }
   } catch (error) {
     console.error(error);

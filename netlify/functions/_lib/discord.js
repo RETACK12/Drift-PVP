@@ -94,6 +94,27 @@ async function patchChannelMessage(channelId, messageId, payload) {
   });
 }
 
+async function getChannelMessage(channelId, messageId) {
+  if (!channelId || !messageId) return null;
+  return discordFetch(`/channels/${channelId}/messages/${messageId}`);
+}
+
+async function listGuildChannels(guildId) {
+  if (!guildId) return [];
+  const channels = await discordFetch(`/guilds/${guildId}/channels`);
+  return Array.isArray(channels) ? channels : [];
+}
+
+async function addGuildRole(guildId, userId, roleId) {
+  if (!guildId || !userId || !roleId) return;
+  await discordFetch(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, { method: "PUT" });
+}
+
+async function removeGuildRole(guildId, userId, roleId) {
+  if (!guildId || !userId || !roleId) return;
+  await discordFetch(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, { method: "DELETE" });
+}
+
 function option(interaction, name) {
   const opts = interaction.data?.options || [];
   const nested = opts[0]?.type === 1 ? opts[0].options || [] : opts;
@@ -114,6 +135,10 @@ module.exports = {
   deleteChannelMessage,
   listChannelMessages,
   patchChannelMessage,
+  getChannelMessage,
+  listGuildChannels,
+  addGuildRole,
+  removeGuildRole,
   option,
   subcommand
 };

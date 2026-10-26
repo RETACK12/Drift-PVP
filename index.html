@@ -153,7 +153,8 @@
     .panel-modes,
     .panel-packs,
     .panel-updates,
-    .panel-events {
+    .panel-events,
+    .panel-driftplus {
       position: relative;
       z-index: 1;
     }
@@ -894,7 +895,8 @@
     }
 
     .panel-updates,
-    .panel-events {
+    .panel-events,
+    .panel-driftplus {
       min-height: 100dvh;
       padding: 7.5rem 1.25rem 4.5rem;
     }
@@ -993,12 +995,46 @@
       font-size: 0.92rem;
     }
 
+    .driftplus-wrap {
+      width: min(40rem, 100%);
+      margin: 0 auto;
+    }
+
+    .driftplus-block {
+      margin-top: 1.6rem;
+    }
+
+    .driftplus-heading {
+      margin-bottom: 0.7rem;
+      font-family: Orbitron, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--cyan-bright);
+    }
+
+    .driftplus-list {
+      display: grid;
+      gap: 0.45rem;
+      margin: 0;
+      padding-left: 1.15rem;
+      color: var(--fg);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .driftplus-list.notes {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
     .panel-home[hidden],
     .panel-rules[hidden],
     .panel-modes[hidden],
     .panel-packs[hidden],
     .panel-updates[hidden],
-    .panel-events[hidden] {
+    .panel-events[hidden],
+    .panel-driftplus[hidden] {
       display: none;
     }
 
@@ -1007,7 +1043,8 @@
     .no-js .panel-modes[hidden],
     .no-js .panel-packs[hidden],
     .no-js .panel-updates[hidden],
-    .no-js .panel-events[hidden] {
+    .no-js .panel-events[hidden],
+    .no-js .panel-driftplus[hidden] {
       display: block;
     }
 
@@ -1034,7 +1071,8 @@
       .panel-modes,
       .panel-packs,
       .panel-updates,
-      .panel-events {
+      .panel-events,
+      .panel-driftplus {
         padding-left: 1.1rem;
         padding-right: 1.1rem;
       }
@@ -1066,7 +1104,7 @@
         min-width: 0;
         padding-left: 0;
         padding-right: 0;
-        font-size: 0.62rem;
+        font-size: 0.56rem;
         letter-spacing: 0;
         text-align: center;
       }
@@ -1118,6 +1156,7 @@
       <a class="tab-link" href="#packs" data-target="packs">Packs</a>
       <a class="tab-link" href="#updates" data-target="updates">Updates</a>
       <a class="tab-link" href="#events" data-target="events">Events</a>
+      <a class="tab-link" href="#driftplus" data-target="driftplus">Drift+</a>
       <a class="tab-link" href="#rules" data-target="rules">Rules</a>
       <span class="tab-ink" aria-hidden="true"></span>
     </nav>
@@ -1256,6 +1295,38 @@
     </div>
   </section>
 
+  <section class="panel-driftplus" id="driftplus" hidden>
+    <div class="driftplus-wrap">
+      <h1 class="feed-title">Drift+</h1>
+      <div class="driftplus-block">
+        <h2 class="driftplus-heading">Drift+ perks</h2>
+        <ul class="driftplus-list">
+          <li>3 extra slots for kits</li>
+          <li>Host tournaments any time</li>
+          <li>More customization options</li>
+          <li>Drift+ exclusive titles</li>
+          <li>Much more</li>
+        </ul>
+      </div>
+      <div class="driftplus-block">
+        <h2 class="driftplus-heading">How to get</h2>
+        <ul class="driftplus-list">
+          <li>Boost the Discord server</li>
+          <li>Become staff (Discord required)</li>
+        </ul>
+      </div>
+      <div class="driftplus-block">
+        <h2 class="driftplus-heading">Note</h2>
+        <ul class="driftplus-list notes">
+          <li>If you boost the Discord, then remove your boost, your Drift+ will be removed.</li>
+          <li>Staff applications are not always open, and if you lose staff then it will be removed.</li>
+          <li>The website packs are not always available and may go down.</li>
+          <li>You can still be banned if you have Drift+.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <section class="panel-events" id="events" hidden>
     <div class="feed-wrap">
       <h1 class="feed-title">Events</h1>
@@ -1280,6 +1351,7 @@
       <a class="tab-link" href="#packs" data-target="packs">Packs</a>
       <a class="tab-link" href="#updates" data-target="updates">Updates</a>
       <a class="tab-link" href="#events" data-target="events">Events</a>
+      <a class="tab-link" href="#driftplus" data-target="driftplus">Drift+</a>
       <a class="tab-link" href="#rules" data-target="rules">Rules</a>
       <span class="tab-ink" aria-hidden="true"></span>
     </div>
@@ -1297,6 +1369,7 @@
     const packsPanel = document.querySelector(".panel-packs");
     const updatesPanel = document.querySelector(".panel-updates");
     const eventsPanel = document.querySelector(".panel-events");
+    const driftPlusPanel = document.querySelector(".panel-driftplus");
     const tabLinks = document.querySelectorAll(".tab-link");
     const panels = {
       home: homePanel,
@@ -1304,7 +1377,8 @@
       modes: modesPanel,
       packs: packsPanel,
       updates: updatesPanel,
-      events: eventsPanel
+      events: eventsPanel,
+      driftplus: driftPlusPanel
     };
     const titles = {
       home: "Drift PVP",
@@ -1312,7 +1386,8 @@
       modes: "Modes · Drift PVP",
       packs: "Packs · Drift PVP",
       updates: "Updates · Drift PVP",
-      events: "Events · Drift PVP"
+      events: "Events · Drift PVP",
+      driftplus: "Drift+ · Drift PVP"
     };
     const API_BASE = window.DRIFT_API || "";
     let cachedEvents = [];
@@ -1382,7 +1457,7 @@
 
     function applyHash() {
       const hash = location.hash.replace("#", "");
-      if (hash === "rules" || hash === "modes" || hash === "packs" || hash === "updates" || hash === "events") {
+      if (hash === "rules" || hash === "modes" || hash === "packs" || hash === "updates" || hash === "events" || hash === "driftplus") {
         showTab(hash);
         window.scrollTo(0, 0);
         return;
