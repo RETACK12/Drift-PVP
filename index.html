@@ -61,7 +61,7 @@
       display: grid;
       grid-template-columns: minmax(6.5rem, 1fr) auto minmax(6.5rem, 1fr);
       align-items: center;
-      min-height: 3.35rem;
+      min-height: 3.85rem;
       padding: 0.45rem 1.1rem 0.4rem;
       background: linear-gradient(90deg, var(--cyan-bright), var(--cyan), var(--violet), var(--purple));
     }
@@ -76,7 +76,7 @@
       background: #000;
       text-decoration: none;
       font-family: Orbitron, sans-serif;
-      font-size: 1.08rem;
+      font-size: 1.16rem;
       font-weight: 700;
       letter-spacing: 0.04em;
     }
@@ -106,7 +106,7 @@
       padding: 0.28rem 0.05rem 0.48rem;
       color: rgba(255, 255, 255, 0.72);
       text-decoration: none;
-      font-size: 0.84rem;
+      font-size: 0.96rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       white-space: nowrap;
@@ -154,7 +154,8 @@
     .panel-packs,
     .panel-updates,
     .panel-events,
-    .panel-driftplus {
+    .panel-driftplus,
+    .panel-merch {
       position: relative;
       z-index: 1;
     }
@@ -609,6 +610,11 @@
       line-height: 1.5;
     }
 
+    .pack-lead strong {
+      color: var(--fg);
+      font-weight: 700;
+    }
+
     .pack-steps {
       margin-bottom: 1rem;
       padding-left: 1.15rem;
@@ -894,9 +900,144 @@
       box-shadow: none;
     }
 
+    .pack-card + .pack-card {
+      margin-top: 1.35rem;
+    }
+
+    .item-count {
+      margin: 0.15rem 0 0.65rem;
+    }
+
+    .item-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .item-tab {
+      border: 1px solid color-mix(in srgb, var(--cyan) 42%, transparent);
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .item-tab.is-on {
+      color: var(--fg);
+      border-color: var(--cyan-bright);
+      background: rgba(14, 186, 255, 0.16);
+    }
+
+    .item-tab:focus-visible,
+    .item-pick:focus-visible,
+    .enchant-level:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 1px;
+    }
+
+    .item-catalog {
+      display: grid;
+      gap: 0.35rem;
+      max-height: 18rem;
+      overflow: auto;
+    }
+
+    .item-catalog:empty {
+      display: none;
+    }
+
+    .item-pick,
+    .enchant-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid rgba(114, 240, 255, 0.12);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--fg);
+      font: inherit;
+      text-align: left;
+    }
+
+    button.item-pick {
+      cursor: pointer;
+    }
+
+    .item-name {
+      font-weight: 700;
+    }
+
+    .item-id,
+    .enchant-max,
+    .item-empty {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .item-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .item-match {
+      margin-top: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .built-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.7rem;
+      align-items: center;
+      padding: 0.45rem 0.55rem;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(114, 240, 255, 0.12);
+      cursor: pointer;
+    }
+
+    .built-item.is-selected {
+      border-color: var(--cyan-bright);
+      box-shadow: inset 0 0 0 1px var(--cyan-bright);
+    }
+
+    .enchant-level-label {
+      display: grid;
+      gap: 0.15rem;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .enchant-level {
+      width: 4.8rem;
+      border: 1px solid color-mix(in srgb, var(--cyan) 45%, transparent);
+      border-radius: 8px;
+      padding: 0.35rem 0.4rem;
+      background: rgba(0, 0, 0, 0.45);
+      color: var(--fg);
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
     .panel-updates,
     .panel-events,
-    .panel-driftplus {
+    .panel-driftplus,
+    .panel-merch {
       min-height: 100dvh;
       padding: 7.5rem 1.25rem 4.5rem;
     }
@@ -1028,13 +1169,60 @@
       font-size: 0.86rem;
     }
 
+    .merch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      justify-content: center;
+      gap: 0.45rem;
+      width: min(64rem, 100%);
+      margin: 0 auto;
+    }
+
+    .merch-card {
+      display: grid;
+      gap: 0.32rem;
+      padding: 0.34rem;
+      border: 1px solid rgba(114, 240, 255, 0.22);
+      border-radius: 10px;
+      background: rgba(8, 2, 20, 0.72);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .merch-card img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+      border-radius: 9px;
+      background: #12041f;
+    }
+
+    .merch-name {
+      font-family: Orbitron, sans-serif;
+      font-size: 0.54rem;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    .merch-price {
+      color: var(--cyan-bright);
+      font-weight: 700;
+      font-size: 0.62rem;
+    }
+
+    .merch-sold {
+      color: #ff8d8d;
+      font-size: 0.51rem;
+    }
+
     .panel-home[hidden],
     .panel-rules[hidden],
     .panel-modes[hidden],
     .panel-packs[hidden],
     .panel-updates[hidden],
     .panel-events[hidden],
-    .panel-driftplus[hidden] {
+    .panel-driftplus[hidden],
+    .panel-merch[hidden] {
       display: none;
     }
 
@@ -1044,7 +1232,8 @@
     .no-js .panel-packs[hidden],
     .no-js .panel-updates[hidden],
     .no-js .panel-events[hidden],
-    .no-js .panel-driftplus[hidden] {
+    .no-js .panel-driftplus[hidden],
+    .no-js .panel-merch[hidden] {
       display: block;
     }
 
@@ -1067,6 +1256,18 @@
         font-size: 0.75rem;
       }
 
+      .hero,
+      .panel-rules,
+      .panel-modes,
+      .panel-packs,
+      .panel-updates,
+      .panel-events,
+      .panel-driftplus,
+      .panel-merch {
+        padding-top: 4.2rem;
+        padding-bottom: 400px;
+      }
+
       .panel-rules,
       .panel-modes,
       .panel-packs,
@@ -1080,8 +1281,20 @@
       .top-bar {
         display: block;
         width: 100%;
-        padding: 0.45rem 0.15rem 0.28rem;
-        overflow: hidden;
+        padding: 0.35rem 0.1rem 0.8rem;
+        overflow: visible;
+        background: none;
+      }
+
+      .top-bar::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 2.75rem;
+        background: linear-gradient(90deg, var(--cyan-bright), var(--cyan), var(--violet), var(--purple));
+        pointer-events: none;
       }
 
       .brand {
@@ -1102,11 +1315,37 @@
         width: auto;
         max-width: none;
         min-width: 0;
-        padding-left: 0;
-        padding-right: 0;
-        font-size: 0.56rem;
+        padding: 0.35rem 0.08rem 0.55rem;
+        font-size: 0.74rem;
         letter-spacing: 0;
         text-align: center;
+      }
+
+      .merch-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.8rem;
+      }
+
+      .merch-card {
+        gap: 0.56rem;
+        padding: 0.6rem;
+        border-radius: 16px;
+      }
+
+      .merch-card img {
+        border-radius: 12px;
+      }
+
+      .merch-name {
+        font-size: 0.96rem;
+      }
+
+      .merch-price {
+        font-size: 1.1rem;
+      }
+
+      .merch-sold {
+        font-size: 0.9rem;
       }
 
       .mode-grid {
@@ -1152,12 +1391,13 @@
       <span class="brand-pvp">PVP</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
-      <a class="tab-link is-active" href="#home" data-target="home">Home</a>
-      <a class="tab-link" href="#packs" data-target="packs">Packs</a>
-      <a class="tab-link" href="#updates" data-target="updates">Updates</a>
-      <a class="tab-link" href="#events" data-target="events">Events</a>
-      <a class="tab-link" href="#driftplus" data-target="driftplus">Drift+</a>
-      <a class="tab-link" href="#rules" data-target="rules">Rules</a>
+      <a class="tab-link is-active" href="#home" data-target="home"><span class="tab-label">Home</span></a>
+      <a class="tab-link" href="#packs" data-target="packs"><span class="tab-label">Packs</span></a>
+      <a class="tab-link" href="#updates" data-target="updates"><span class="tab-label">Updates</span></a>
+      <a class="tab-link" href="#events" data-target="events"><span class="tab-label">Events</span></a>
+      <a class="tab-link" href="#driftplus" data-target="driftplus"><span class="tab-label">Drift+</span></a>
+      <a class="tab-link" href="#merch" data-target="merch"><span class="tab-label">Merch</span></a>
+      <a class="tab-link" href="#rules" data-target="rules"><span class="tab-label">Rules</span></a>
       <span class="tab-ink" aria-hidden="true"></span>
     </nav>
   </header>
@@ -1283,6 +1523,37 @@
         <p class="pack-status" id="npc-status" role="status"></p>
         <button class="copy pack-download" id="npc-download" type="button" disabled>Download .mcaddon</button>
       </article>
+      <article class="pack-card" id="item-generator">
+        <h2>ILLEGAL ITEM GENERATOR</h2>
+        <p class="pack-lead">Pick up to 30 items and put your own enchants on each one. Download a behavior pack, turn it on, then type <strong>/function givei</strong> or <strong>/tag @s add givei</strong>. That gives you a tag called givei. When you have that tag, every item spawns on you. You have to be allowed to use commands.</p>
+        <ol class="pack-steps">
+          <li>Name the pack. A description is optional.</li>
+          <li>On the Items tab, search and add up to <strong>30</strong> items. Remove one the same way as a skin.</li>
+          <li>Each item shows its structure name. The first is <strong>illegal_item_0</strong>, then illegal_item_1, and so on.</li>
+          <li>Select an item, open the Enchants tab, and set the enchants for that item only.</li>
+          <li>Download the <strong>.mcaddon</strong> and turn the behavior pack on.</li>
+        </ol>
+        <label class="pack-field" for="item-pack-name">Pack name
+          <input id="item-pack-name" name="item-pack-name" maxlength="40" autocomplete="off" placeholder="Illegal items">
+        </label>
+        <label class="pack-field" for="item-pack-desc">Pack description <span class="pack-optional">optional</span>
+          <textarea id="item-pack-desc" name="item-pack-description" maxlength="240" rows="3" placeholder="Shown on the pack in Minecraft"></textarea>
+        </label>
+        <p class="skin-count item-count"><span id="item-count">0</span> / 30</p>
+        <ul class="skin-list" id="item-built"></ul>
+        <div class="item-tabs" role="tablist">
+          <button class="item-tab is-on" id="item-tab-items" type="button" role="tab" aria-selected="true" aria-controls="item-catalog">Items</button>
+          <button class="item-tab" id="item-tab-enchants" type="button" role="tab" aria-selected="false" aria-controls="item-catalog">Enchants</button>
+        </div>
+        <label class="pack-field" for="item-search">Search
+          <input id="item-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search items">
+        </label>
+        <p class="item-empty" id="item-tab-note"></p>
+        <div class="item-catalog" id="item-catalog"></div>
+        <p class="item-match" id="item-match"></p>
+        <p class="pack-status" id="item-status" role="status"></p>
+        <button class="copy pack-download" id="item-download" type="button" disabled>Download .mcaddon</button>
+      </article>
     </div>
   </section>
 
@@ -1320,9 +1591,17 @@
         <ul class="driftplus-list notes">
           <li>If you boost the Discord, then remove your boost, your Drift+ will be removed.</li>
           <li>Staff applications are not always open, and if you lose staff then it will be removed.</li>
-          <li>The website packs are not always available and may go down.</li>
           <li>You can still be banned if you have Drift+.</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-merch" id="merch" hidden>
+    <div class="feed-wrap">
+      <h1 class="feed-title">Merch</h1>
+      <div class="merch-grid" id="merch-list">
+        <p class="feed-empty">Loading merch...</p>
       </div>
     </div>
   </section>
@@ -1347,17 +1626,19 @@
 
   <nav class="bottom-bar" aria-label="Tabs">
     <div class="bottom-bar-inner">
-      <a class="tab-link" href="#home" data-target="home">Home</a>
-      <a class="tab-link" href="#packs" data-target="packs">Packs</a>
-      <a class="tab-link" href="#updates" data-target="updates">Updates</a>
-      <a class="tab-link" href="#events" data-target="events">Events</a>
-      <a class="tab-link" href="#driftplus" data-target="driftplus">Drift+</a>
-      <a class="tab-link" href="#rules" data-target="rules">Rules</a>
+      <a class="tab-link" href="#home" data-target="home"><span class="tab-label">Home</span></a>
+      <a class="tab-link" href="#packs" data-target="packs"><span class="tab-label">Packs</span></a>
+      <a class="tab-link" href="#updates" data-target="updates"><span class="tab-label">Updates</span></a>
+      <a class="tab-link" href="#events" data-target="events"><span class="tab-label">Events</span></a>
+      <a class="tab-link" href="#driftplus" data-target="driftplus"><span class="tab-label">Drift+</span></a>
+      <a class="tab-link" href="#merch" data-target="merch"><span class="tab-label">Merch</span></a>
+      <a class="tab-link" href="#rules" data-target="rules"><span class="tab-label">Rules</span></a>
       <span class="tab-ink" aria-hidden="true"></span>
     </div>
   </nav>
 
   <script src="config.js"></script>
+  <script src="merch-token.js"></script>
   <script>
     const REALM_CODE = "JQ65GUBcQyVDfwY";
     const copyBtn = document.querySelector(".copy");
@@ -1370,6 +1651,7 @@
     const updatesPanel = document.querySelector(".panel-updates");
     const eventsPanel = document.querySelector(".panel-events");
     const driftPlusPanel = document.querySelector(".panel-driftplus");
+    const merchPanel = document.querySelector(".panel-merch");
     const tabLinks = document.querySelectorAll(".tab-link");
     const panels = {
       home: homePanel,
@@ -1378,7 +1660,8 @@
       packs: packsPanel,
       updates: updatesPanel,
       events: eventsPanel,
-      driftplus: driftPlusPanel
+      driftplus: driftPlusPanel,
+      merch: merchPanel
     };
     const titles = {
       home: "Drift PVP",
@@ -1387,7 +1670,8 @@
       packs: "Packs · Drift PVP",
       updates: "Updates · Drift PVP",
       events: "Events · Drift PVP",
-      driftplus: "Drift+ · Drift PVP"
+      driftplus: "Drift+ · Drift PVP",
+      merch: "Merch · Drift PVP"
     };
     const API_BASE = window.DRIFT_API || "";
     let cachedEvents = [];
@@ -1419,12 +1703,13 @@
           ink.style.width = "0px";
           return;
         }
+        const label = link.querySelector(".tab-label") || link;
         const navBox = nav.getBoundingClientRect();
-        const linkBox = link.getBoundingClientRect();
+        const linkBox = label.getBoundingClientRect();
         const x = linkBox.left - navBox.left + nav.scrollLeft;
-        const y = linkBox.bottom - navBox.top - 4;
+        const y = linkBox.bottom - navBox.top + 2;
         if (instant) ink.style.transition = "none";
-        ink.style.width = `${linkBox.width}px`;
+        ink.style.width = `${Math.max(0, linkBox.width)}px`;
         ink.style.transform = `translate(${x}px, ${y}px)`;
         ink.classList.toggle("is-events", name === "events");
         if (instant) {
@@ -1434,6 +1719,79 @@
       });
     }
 
+    const FOURTHWALL_TOKEN = window.FOURTHWALL_TOKEN || "";
+    const FOURTHWALL_SHOP = "https://drift-pvp-shop.fourthwall.com";
+    let merchLoaded = false;
+
+    function money(price) {
+      if (!price || price.value == null) return "";
+      try {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: price.currency || "USD"
+        }).format(price.value);
+      } catch {
+        return `$${Number(price.value).toFixed(2)}`;
+      }
+    }
+
+    function productPrice(product) {
+      if (product.type === "BUNDLE" && product.price) return product.price;
+      const prices = (product.variants || []).map((variant) => variant.unitPrice).filter((price) => price && price.value != null);
+      prices.sort((a, b) => a.value - b.value);
+      return prices[0] || null;
+    }
+
+    async function loadMerch() {
+      if (merchLoaded) return;
+      const list = document.getElementById("merch-list");
+      if (!list) return;
+      if (!FOURTHWALL_TOKEN) {
+        list.innerHTML = `<p class="feed-empty">Merch could not be loaded.</p>`;
+        return;
+      }
+      try {
+        const products = [];
+        let page = 0;
+        let hasMore = true;
+        while (hasMore && page < 10) {
+          const res = await fetch(
+            `https://storefront-api.fourthwall.com/v1/collections/all/products?storefront_token=${FOURTHWALL_TOKEN}&page=${page}&size=50`
+          );
+          if (!res.ok) throw new Error("Merch could not be loaded.");
+          const data = await res.json();
+          products.push(...(data.results || []));
+          hasMore = Boolean(data.paging && data.paging.hasNextPage);
+          page += 1;
+        }
+        if (!products.length) {
+          list.innerHTML = `<p class="feed-empty">No merch is up yet.</p>`;
+          merchLoaded = true;
+          return;
+        }
+        list.innerHTML = products.map((product) => {
+          const image = (product.images && product.images[0]) || {};
+          const src = image.transformedUrl || image.url || "";
+          const sold = product.state && product.state.type === "SOLD_OUT";
+          const href = `${FOURTHWALL_SHOP}/products/${encodeURIComponent(product.slug || "")}`;
+          return `<a class="merch-card" href="${href}" target="_blank" rel="noopener noreferrer">
+            ${src ? `<img src="${src}" alt="">` : ""}
+            <div class="merch-name"></div>
+            <div class="merch-price"></div>
+            ${sold ? `<div class="merch-sold">Sold out</div>` : ""}
+          </a>`;
+        }).join("");
+        list.querySelectorAll(".merch-card").forEach((card, index) => {
+          const product = products[index];
+          card.querySelector(".merch-name").textContent = product.name || "Merch";
+          card.querySelector(".merch-price").textContent = money(productPrice(product));
+        });
+        merchLoaded = true;
+      } catch {
+        list.innerHTML = `<p class="feed-empty">Merch could not be loaded.</p>`;
+      }
+    }
+
     function showTab(name) {
       const tab = panels[name] ? name : "home";
       Object.entries(panels).forEach(([key, panel]) => {
@@ -1441,6 +1799,7 @@
       });
       document.body.dataset.tab = tab;
       document.title = titles[tab];
+      if (tab === "merch") loadMerch();
       tabLinks.forEach((link) => {
         const active = link.dataset.target === tab;
         link.classList.toggle("is-active", active);
@@ -1457,7 +1816,7 @@
 
     function applyHash() {
       const hash = location.hash.replace("#", "");
-      if (hash === "rules" || hash === "modes" || hash === "packs" || hash === "updates" || hash === "events" || hash === "driftplus") {
+      if (hash === "rules" || hash === "modes" || hash === "packs" || hash === "updates" || hash === "events" || hash === "driftplus" || hash === "merch") {
         showTab(hash);
         window.scrollTo(0, 0);
         return;
@@ -1680,5 +2039,6 @@
     })();
   </script>
   <script src="npc-generator.js"></script>
+  <script src="illegal-item-generator.js"></script>
 </body>
 </html>

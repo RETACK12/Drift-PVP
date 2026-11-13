@@ -4,3 +4,4 @@ node_modules/
 *.zip
 .chrome-tmp*
 .netlify/
+merch-token.js
